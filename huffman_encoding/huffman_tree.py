@@ -80,7 +80,7 @@ def encode_string(string:str, tree:Node):
     for character in string:
         encoding = encode_character(character)
         if encoding is None:
-            raise ValueError("There has been a problem decoding {character}")
+            raise ValueError(f"There has been a problem decoding {character}")
         result += encoding
     return result
 
