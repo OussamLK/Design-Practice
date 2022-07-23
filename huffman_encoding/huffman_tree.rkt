@@ -1,10 +1,18 @@
 #lang racket/base
 (define (assert exp error-message) (if (not exp) (error error-message) (display "Test OK.\n") ))
+(define (display-many . args)
+    (cond ((null? args) (display "\n"))
+          (else (display (car args)) (apply display-many (cdr args)))))
 (define (make-leaf character frequency) (list 'leaf character frequency))
 (define (make-node left-child right-child) (list 'node left-child right-child))
+(define (leaf? x) (eq? (car x) 'leaf))
+(define (get-character leaf) (if (leaf? leaf)(cadr leaf)(error "get-character execpts a leaf")))
+(define (left-branch node) (cadr node))
+(define (right-branch node) (caddr node))
 (define (get-frequency node)
     (if (eq? (car node) 'leaf) (caddr node)
         (+ (get-frequency (cadr node)) (get-frequency (caddr node)))))
+
 (define (min-key elements key)
     (cond ((null? elements) (error "min-key of an empty list is not defined"))
           ((= (length elements) 1) (car elements))
@@ -22,6 +30,25 @@
                 (define min2 (min-frequ-node (pop-min-frequ-node nodes)))
                 (define rest (pop-min-frequ-node (pop-min-frequ-node nodes)))
                 (build-huffman (cons (make-node min1 min2) rest)))))
+(define (decode string tree)
+        (define (decode-1 string node)
+            (cond ((= (length string) 0) (cons (get-character node) '()))
+                  ((leaf? node) (cons (get-character node) (decode string tree)))
+                  ((eq? (car string) '0) (decode-1 (cdr string) (left-branch node)))
+                  (else (decode-1 (cdr string) (right-branch node)))))
+        (decode-1 string tree))
+
+(define (encode string tree)
+    (define (encode-1 letter node)
+        (cond ((and (leaf? node) (eq? letter (get-character node))) (cons #t '()))
+              ((leaf? node) (list #f))
+              (else (let ((left (encode-1 letter (left-branch node)))
+                          (right (encode-1 letter (right-branch node))))
+                          (cond ((car left) (cons #t (cons '0 (cdr left))))
+                                ((car right) (cons #t (cons '1 (cdr right))))
+                                (else (list #f)))))))
+    (if (null? string) '()
+        (append (cdr (encode-1 (car string) tree)) (encode (cdr string) tree))))
 
 
 
@@ -45,6 +72,7 @@
     )
 )
 
+
 (define alphabet (list (make-leaf 'a 8)
                      (make-leaf 'b 3)
                      (make-leaf 'c 1)
@@ -53,4 +81,6 @@
                      (make-leaf 'f 1)
                      (make-leaf 'g 1)))
 (define tree (build-huffman alphabet))
-(pretty-print (cddr tree))
+(display-many "decode `0 1 0 0` is: " (decode '(0 1 0 0) tree))
+(display-many "encoding `acagf` gives: " (encode '(a c a g f) tree))
+(display-many "encoding then decoding acefg gives: " (decode (encode '(a c e f g) tree) tree))
